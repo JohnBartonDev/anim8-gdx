@@ -133,9 +133,9 @@ public class ShaderCaptureDemo extends ApplicationAdapter {
         height = Gdx.graphics.getHeight();
 
         Gdx.files.local("images").mkdirs();
-		renderAPNG();
-		renderPNG8();
-        renderGif();
+//		renderAPNG();
+//		renderPNG8();
+//        renderGif();
     }
 
     @Override

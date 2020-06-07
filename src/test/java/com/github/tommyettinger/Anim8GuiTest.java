@@ -16,13 +16,12 @@ import com.github.tommyettinger.anim8.recorder.Anim8Gui;
 
 import space.earlygrey.shapedrawer.ShapeDrawer;
 
-public class RecorderTest extends ApplicationAdapter {
+public class Anim8GuiTest extends ApplicationAdapter {
 	
 	private Batch batch;
 	private Texture pixelTexture;
 	private ShapeDrawer shapeDrawer;
 	private Anim8Gui recorder;
-	private AnimatedGif gif;
 	
 	@Override
 	public void create() {
@@ -34,11 +33,9 @@ public class RecorderTest extends ApplicationAdapter {
 		
 		shapeDrawer = new ShapeDrawer(batch, new TextureRegion(pixelTexture));
 		
-		recorder = new Anim8Gui(batch);
+		recorder = new Anim8Gui(batch, Gdx.files.local("images"));
 		
-		gif = new AnimatedGif();
-		
-		recorder.setCustomWriteConsumer((frames) -> {
+		recorder.setCustomAnimatedGifWriter((gif, frames) -> {
 			try {
 				gif.write(Gdx.files.local("images/AnimatedPNGTest-" + ".gif"), frames, 16);
 			}
@@ -61,9 +58,9 @@ public class RecorderTest extends ApplicationAdapter {
 		Gdx.gl.glClear(Gdx.gl.GL_COLOR_BUFFER_BIT);
 		
 		batch.begin();
-		recorder.draw(shapeDrawer);
 		batch.end();
 		
+		recorder.draw();
 	}
 	
 	@Override
@@ -77,7 +74,7 @@ public class RecorderTest extends ApplicationAdapter {
 		configuration.setTitle("GUI");
 		configuration.setWindowedMode(500, 500);
 		
-		new Lwjgl3Application(new RecorderTest(), configuration);
+		new Lwjgl3Application(new Anim8GuiTest(), configuration);
 	}
 
 }
