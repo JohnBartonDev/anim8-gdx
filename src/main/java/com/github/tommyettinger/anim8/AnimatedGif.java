@@ -1,5 +1,6 @@
 package com.github.tommyettinger.anim8;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.math.MathUtils;
@@ -15,11 +16,27 @@ import java.io.OutputStream;
  * Java animated GIF encoder by Kevin Weiner ( http://www.java2s.com/Code/Java/2D-Graphics-GUI/AnimatedGifEncoder.htm ).
  * The original has no copyright asserted, so this file continues that tradition and does not assert copyright either.
  */
-public class AnimatedGif {
-    public void write(FileHandle file, Array<Pixmap> frames) throws IOException {
+public class AnimatedGif implements AnimationWriter, Dithered {
+    /**
+     * Writes the given Pixmap values in {@code frames}, in order, to an animated GIF at {@code file}. Always writes at
+     * 30 frames per second, so if frames has less than 30 items, this animation will be under a second long.
+     * @param file the FileHandle to write to; should generally not be internal because it must be writable
+     * @param frames an Array of Pixmap frames that should all be the same size, to be written in order
+     */
+    @Override
+    public void write(FileHandle file, Array<Pixmap> frames) {
         write(file, frames, 30);
     }
-    public void write(FileHandle file, Array<Pixmap> frames, int fps) throws IOException {
+
+    /**
+     * Writes the given Pixmap values in {@code frames}, in order, to an animated GIF at {@code file}. The resulting GIF
+     * will play back at {@code fps} frames per second.
+     * @param file the FileHandle to write to; should generally not be internal because it must be writable
+     * @param frames an Array of Pixmap frames that should all be the same size, to be written in order
+     * @param fps how many frames (from {@code frames}) to play back per second
+     */
+    @Override
+    public void write(FileHandle file, Array<Pixmap> frames, int fps) {
         OutputStream output = file.write(false);
         try {
             write(output, frames, fps);
@@ -28,16 +45,26 @@ public class AnimatedGif {
         }
     }
 
-    private void write(OutputStream output, Array<Pixmap> frames, int fps) throws IOException {
+    /**
+     * Writes the given Pixmap values in {@code frames}, in order, to an animated GIF in the OutputStream
+     * {@code output}. The resulting GIF will play back at {@code fps} frames per second.
+     * @param output the OutputStream to write to; will not be closed by this method
+     * @param frames an Array of Pixmap frames that should all be the same size, to be written in order
+     * @param fps how many frames (from {@code frames}) to play back per second
+     */
+    @Override
+    public void write(OutputStream output, Array<Pixmap> frames, int fps) {
         if (palette == null)
             palette = new PaletteReducer(frames);
-        start(output);
+        if(!start(output)) return;
         setFrameRate(fps);
         for (int i = 0; i < frames.size; i++) {
             addFrame(frames.get(i));
         }
         finish();
     }
+
+    protected Dithered.DitherAlgorithm ditherAlgorithm = Dithered.DitherAlgorithm.PATTERN;
     
     protected int width; // image size
 
@@ -80,6 +107,28 @@ public class AnimatedGif {
     protected boolean sizeSet = false; // if false, get size from first frame
 
     public PaletteReducer palette;
+
+    /**
+     * Gets the PaletteReducer this uses to lower the color count in an image. If the PaletteReducer is null, this
+     * should try to assign itself a PaletteReducer when given a new image.
+     *
+     * @return the PaletteReducer this uses; may be null
+     */
+    @Override
+    public PaletteReducer getPalette() {
+        return palette;
+    }
+
+    /**
+     * Sets the PaletteReducer this uses to bring a high-color or different-palette image down to a smaller palette
+     * size. If {@code palette} is null, this should try to assign itself a PaletteReducer when given a new image.
+     *
+     * @param palette a PaletteReducer that is often pre-configured with a specific palette; null is usually allowed
+     */
+    @Override
+    public void setPalette(PaletteReducer palette) {
+        this.palette = palette;
+    }
 
     /**
      * Sets the delay time between each frame, or changes it for subsequent frames
@@ -131,6 +180,24 @@ public class AnimatedGif {
      */
     public void setFlipY(boolean flipY) {
         this.flipY = flipY;
+    }
+    
+    /**
+     * Gets the {@link Dithered.DitherAlgorithm} this is currently using.
+     * @return which dithering algorithm this currently uses.
+     */
+    public Dithered.DitherAlgorithm getDitherAlgorithm() {
+        return ditherAlgorithm;
+    }
+
+    /**
+     * Sets the dither algorithm (or disables it) using an enum constant from {@link Dithered.DitherAlgorithm}. If this
+     * is given null, it instead does nothing.
+     * @param ditherAlgorithm which {@link Dithered.DitherAlgorithm} to use for upcoming output
+     */
+    public void setDitherAlgorithm(Dithered.DitherAlgorithm ditherAlgorithm) {
+        if(ditherAlgorithm != null)
+            this.ditherAlgorithm = ditherAlgorithm;
     }
 
     /**
@@ -267,6 +334,7 @@ public class AnimatedGif {
             writeString("GIF89a"); // header
         } catch (IOException e) {
             ok = false;
+            Gdx.app.error("anim8", e.getMessage());
         }
         return started = ok;
     }
@@ -292,34 +360,98 @@ public class AnimatedGif {
         // map image pixels to new palette
         int color, used, flipped = flipY ? height - 1 : 0, flipDir = flipY ? -1 : 1;
         boolean hasTransparent = paletteArray[0] == 0;
-        float pos, adj, strength = palette.ditherStrength * 3.333f;
-        for (int y = 0, i = 0; y < height && i < nPix; y++) {
-            for (int px = 0; px < width & i < nPix; px++) {
-                color = image.getPixel(px, flipped + flipDir * y) & 0xF8F8F880;
-                if ((color & 0x80) == 0 && hasTransparent)
-                    indexedPixels[i++] = 0;
-                else {
-                    color |= (color >>> 5 & 0x07070700) | 0xFE;
-                    int rr = ((color >>> 24));
-                    int gg = ((color >>> 16) & 0xFF);
-                    int bb = ((color >>> 8) & 0xFF);
-                    used = paletteArray[paletteMapping[((rr << 7) & 0x7C00)
-                            | ((gg << 2) & 0x3E0)
-                            | ((bb >>> 3))] & 0xFF];
-                    pos = (px * 0.06711056f + y * 0.00583715f);
-                    pos -= (int) pos;
-                    pos *= 52.9829189f;
-                    pos -= (int) pos;
-                    adj = (pos * pos - 0.3f) * strength;
-                    rr = MathUtils.clamp((int) (rr + (adj * (rr - (used >>> 24       )))), 0, 0xFF);
-                    gg = MathUtils.clamp((int) (gg + (adj * (gg - (used >>> 16 & 0xFF)))), 0, 0xFF);
-                    bb = MathUtils.clamp((int) (bb + (adj * (bb - (used >>> 8  & 0xFF)))), 0, 0xFF);
-                    usedEntry[(indexedPixels[i] = paletteMapping[((rr << 7) & 0x7C00)
-                            | ((gg << 2) & 0x3E0)
-                            | ((bb >>> 3))]) & 255] = true;
-                    i++;
+        switch (ditherAlgorithm) {
+            case NONE:  {
+                for (int y = 0, i = 0; y < height && i < nPix; y++) {
+                    for (int px = 0; px < width & i < nPix; px++) {
+                        color = image.getPixel(px, flipped + flipDir * y) & 0xF8F8F880;
+                        if ((color & 0x80) == 0 && hasTransparent)
+                            indexedPixels[i++] = 0;
+                        else {
+                            usedEntry[(indexedPixels[i] = paletteMapping[
+                                      (color >>> 17 & 0x7C00)
+                                    | (color >>> 14 & 0x3E0)
+                                    | ((color >>> 11 & 0x1F))]) & 255] = true;
+                            i++;
+                        }
+                    }
                 }
             }
+            break;
+            case PATTERN:  {
+                int cr, cg, cb,  usedIndex;
+                final float errorMul = palette.ditherStrength * 0.375f;
+                for (int y = 0, i = 0; y < height && i < nPix; y++) {
+                    for (int px = 0; px < width & i < nPix; px++) {
+                        color = image.getPixel(px, flipped + flipDir * y) & 0xF8F8F880;
+                        if ((color & 0x80) == 0 && hasTransparent)
+                            indexedPixels[i++] = 0;
+                        else {
+                            int er = 0, eg = 0, eb = 0;
+                            color |= (color >>> 5 & 0x07070700) | 0xFF;
+                            cr = (color >>> 24);
+                            cg = (color >>> 16 & 0xFF);
+                            cb = (color >>> 8 & 0xFF);
+                            for (int c = 0; c < palette.candidates.length; c++) {
+                                int rr = MathUtils.clamp((int) (cr + er * errorMul), 0, 255);
+                                int gg = MathUtils.clamp((int) (cg + eg * errorMul), 0, 255);
+                                int bb = MathUtils.clamp((int) (cb + eb * errorMul), 0, 255);
+                                usedIndex = paletteMapping[((rr << 7) & 0x7C00)
+                                        | ((gg << 2) & 0x3E0)
+                                        | ((bb >>> 3))] & 0xFF;
+                                palette.candidates[c] = paletteArray[usedIndex];
+                                used = palette.gammaArray[usedIndex];
+                                er += cr - (used >>> 24);
+                                eg += cg - (used >>> 16 & 0xFF);
+                                eb += cb - (used >>> 8 & 0xFF);
+                            }
+                            palette.sort16(palette.candidates);
+                            usedEntry[(indexedPixels[i] = paletteMapping[
+                                    PaletteReducer.shrink(palette.candidates[PaletteReducer.thresholdMatrix[
+                                            ((int) (px * 0x0.C13FA9A902A6328Fp3f + y * 0x0.91E10DA5C79E7B1Dp2f) & 3) ^
+                                                    ((px & 3) | (y & 3) << 2)
+                                            ]])
+                                    ]) & 255] = true;
+                            i++;
+
+                        }
+                    }
+                }
+            }
+            break;
+            case GRADIENT_NOISE:
+            default: {
+                float pos, adj, strength = palette.ditherStrength * 3.333f;
+                for (int y = 0, i = 0; y < height && i < nPix; y++) {
+                    for (int px = 0; px < width & i < nPix; px++) {
+                        color = image.getPixel(px, flipped + flipDir * y) & 0xF8F8F880;
+                        if ((color & 0x80) == 0 && hasTransparent)
+                            indexedPixels[i++] = 0;
+                        else {
+                            color |= (color >>> 5 & 0x07070700) | 0xFE;
+                            int rr = ((color >>> 24));
+                            int gg = ((color >>> 16) & 0xFF);
+                            int bb = ((color >>> 8) & 0xFF);
+                            used = paletteArray[paletteMapping[((rr << 7) & 0x7C00)
+                                    | ((gg << 2) & 0x3E0)
+                                    | ((bb >>> 3))] & 0xFF];
+                            pos = (px * 0.06711056f + y * 0.00583715f);
+                            pos -= (int) pos;
+                            pos *= 52.9829189f;
+                            pos -= (int) pos;
+                            adj = (pos * pos - 0.3f) * strength;
+                            rr = MathUtils.clamp((int) (rr + (adj * (rr - (used >>> 24)))), 0, 0xFF);
+                            gg = MathUtils.clamp((int) (gg + (adj * (gg - (used >>> 16 & 0xFF)))), 0, 0xFF);
+                            bb = MathUtils.clamp((int) (bb + (adj * (bb - (used >>> 8 & 0xFF)))), 0, 0xFF);
+                            usedEntry[(indexedPixels[i] = paletteMapping[((rr << 7) & 0x7C00)
+                                    | ((gg << 2) & 0x3E0)
+                                    | ((bb >>> 3))]) & 255] = true;
+                            i++;
+                        }
+                    }
+                }
+            }
+            break;
         }
         colorDepth = 8;
         palSize = 7;
