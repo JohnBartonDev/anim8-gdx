@@ -12,7 +12,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.scenes.scene2d.utils.UIUtils;
 import com.badlogic.gdx.utils.TimeUtils;
-import com.github.tommyettinger.anim8.recorder.Anim8Gui;
+import com.github.tommyettinger.anim8.Anim8Gui;
 
 public class ShaderCaptureGuiTest extends ApplicationAdapter {
 	
@@ -29,8 +29,9 @@ public class ShaderCaptureGuiTest extends ApplicationAdapter {
 	public void create() {
 		batch = new SpriteBatch();
 		
-		gui = new Anim8Gui(batch, Gdx.files.local("images/"));
+		gui = new Anim8Gui(batch);
 		gui.writeAnimatedGif(true);
+		gui.writeAnimatedPNG(true);
 		
 		Gdx.input.setInputProcessor(gui);
 		

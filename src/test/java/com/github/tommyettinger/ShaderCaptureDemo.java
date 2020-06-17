@@ -5,6 +5,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -13,7 +14,9 @@ import com.badlogic.gdx.scenes.scene2d.utils.UIUtils;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.TimeUtils;
-import com.github.tommyettinger.anim8.*;
+import com.github.tommyettinger.anim8.AnimatedGif;
+import com.github.tommyettinger.anim8.AnimatedPNG;
+import com.github.tommyettinger.anim8.PNG8;
 
 /**
  * This is from the NorthernLights demo in SquidLib-Demos, available
@@ -182,7 +185,7 @@ public class ShaderCaptureDemo extends ApplicationAdapter {
         Array<Pixmap> pixmaps = new Array<>(40);
         for (int i = 1; i <= 40; i++) {
             Gdx.gl.glClearColor(0f, 0f, 0f, 0f);
-            Gdx.gl.glClear(Gdx.gl.GL_COLOR_BUFFER_BIT);
+            Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
             batch.begin();
             shader.setUniformf("seed", seed);
             shader.setUniformf("tm", i * 2.5f);

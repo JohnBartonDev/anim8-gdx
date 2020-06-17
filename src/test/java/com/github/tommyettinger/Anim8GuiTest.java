@@ -11,8 +11,8 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.github.tommyettinger.anim8.Anim8Gui;
 import com.github.tommyettinger.anim8.AnimatedGif;
-import com.github.tommyettinger.anim8.recorder.Anim8Gui;
 
 import space.earlygrey.shapedrawer.ShapeDrawer;
 
@@ -36,12 +36,13 @@ public class Anim8GuiTest extends ApplicationAdapter {
 		recorder = new Anim8Gui(batch, Gdx.files.local("images"));
 		
 		recorder.setCustomAnimatedGifWriter((gif, frames) -> {
-			try {
-				gif.write(Gdx.files.local("images/AnimatedPNGTest-" + ".gif"), frames, 16);
-			}
-			catch(IOException e) {
-				e.printStackTrace();
-			}
+			gif.write(null, frames);
+//			try {
+//				gif.write(Gdx.files.local("images/AnimatedPNGTest-" + ".gif"), frames, 16);
+//			}
+//			catch(IOException e) {
+//				e.printStackTrace();
+//			}
 		});
 		
 		Gdx.input.setInputProcessor(recorder);
